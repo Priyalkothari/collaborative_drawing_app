@@ -1,3 +1,5 @@
+*.env
+
 # Android
 /android/app/build/
 /android/build/
