@@ -35,10 +35,14 @@ class _DrawingScreenState extends State<DrawingScreen> {
             onPressed: viewModel.redo,
           ),
           IconButton(
-            icon: const Icon(Icons.zoom_out_map),
+            icon: viewModel.drawingZoomed ? const Icon(Icons.zoom_out_map) : const Icon(Icons.zoom_in),
             onPressed: () {
+              if (viewModel.drawingZoomed) {
                 _transformationController.value = Matrix4.identity();
                 viewModel.resetTransform();
+              } else {
+                viewModel.updateZoomState(true);
+              }
             },
           ),
         ],
@@ -46,40 +50,24 @@ class _DrawingScreenState extends State<DrawingScreen> {
       body: Column(
         children: [
           Expanded(
-            child: Consumer<DrawingViewModel>(
-              builder: (context, viewModel, child) {
-                return InteractiveViewer(
-                  transformationController: _transformationController,
-                    boundaryMargin: const EdgeInsets.all(50), // Allow moving beyond screen
-                    minScale: 0.5, // Minimum zoom out level
-                    maxScale: 4.0, // Maximum zoom in level
-                  onInteractionUpdate: (details) {
-                    if (details.scale > 1.2) {
-                      viewModel.updateZoomState(true);
-                    }
-                  },
-                  child: Container(
-                    color: Colors.white,
-                    child: Listener(
-                      onPointerUp: (details) {
-                        viewModel
-                            .addPoint(details.localPosition);
-                      },
-                      onPointerMove: (details) {
-                        if (!viewModel.drawingZoomed) {
-                          viewModel
-                              .updatePoint(details.localPosition);
-                        }
-                      },
-                      child: CustomPaint(
-                        painter: DrawingCanvas(viewModel.points),
-                        size: Size.infinite,
-                      ),
-                    ),
-                  ),
-                );
+            child: viewModel.drawingZoomed ? InteractiveViewer(
+                transformationController: _transformationController,
+                boundaryMargin: const EdgeInsets.all(50), // Allow moving beyond screen
+                minScale: 0.5, // Minimum zoom out level
+                maxScale: 4.0,
+                child: paintBoard()) : GestureDetector(
+              onPanStart: (details) {
+                viewModel
+                    .addPoint(details.localPosition);
               },
-            ),
+              onPanUpdate: (details) {
+                if (!viewModel.drawingZoomed) {
+                  viewModel
+                      .updatePoint(details.localPosition);
+                }
+              },
+              child: paintBoard(),
+            )
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -120,7 +108,19 @@ class _DrawingScreenState extends State<DrawingScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: () => viewModel.clearPoints(), child: Icon(Icons.clear),),
+      // floatingActionButton: FloatingActionButton(onPressed: () => viewModel.clearPoints(), child: const Icon(Icons.clear),),
     );
   }
+
+  Widget paintBoard() => Consumer<DrawingViewModel>(
+    builder: (context, viewModel, child) {
+      return Container(
+        color: Colors.white,
+        child: CustomPaint(
+          painter: DrawingCanvas(viewModel.points),
+          size: Size.infinite,
+        ),
+      );
+    },
+  );
 }
